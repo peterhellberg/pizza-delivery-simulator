@@ -1,7 +1,3 @@
----
-shell: bash
----
-
 # Pizza Delivery Simulator 🍕
 
 - Workflow: Customer places an order.
