@@ -1,42 +1,41 @@
 package pds
 
 import (
-	"context"
-	"slices"
+	"errors"
+	"time"
 
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
 func GetMenu(ctx workflow.Context) (Menu, error) {
-	a := &Activities{}
+	logger := workflow.GetLogger(ctx)
 
-	return a.RetrieveMenu(context.Background())
-}
+	logger.Info("Getting the menu")
 
-func NewMenu() Menu {
-	return Menu{
-		Pizzas: []Pizza{
-			{Number: 1, Name: "Kebab Pizza", Price: 75},
-			{Number: 2, Name: "Vesuvio", Price: 60},
-			{Number: 3, Name: "Hawaiian", Price: 65},
-			{Number: 4, Name: "Margherita", Price: 55},
-			{Number: 5, Name: "Capricciosa", Price: 60},
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		StartToCloseTimeout: time.Minute,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval:    time.Second,
+			BackoffCoefficient: 2.0,
+			MaximumInterval:    10 * time.Second,
+			MaximumAttempts:    5,
 		},
-	}
-}
-
-type Menu struct {
-	Pizzas []Pizza
-}
-
-func (m Menu) HasPizza(n int) bool {
-	return slices.ContainsFunc(m.Pizzas, func(p Pizza) bool {
-		return p.Number == n
 	})
-}
 
-type Pizza struct {
-	Number int    `json:"nr"`
-	Name   string `json:"name"`
-	Price  int    `json:"price"`
+	var a *Activities
+
+	var menu Menu
+
+	if err := workflow.
+		ExecuteActivity(ctx, a.RetrieveMenu).
+		Get(ctx, &menu); err != nil {
+		if errors.Is(err, ErrUnavailableMenu) {
+			logger.Error("Menu is currently unavailable")
+		}
+
+		return menu, err
+	}
+
+	return menu, nil
 }
