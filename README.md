@@ -44,8 +44,8 @@ temporal workflow execute -t pizza --name GetMenu
 #### PlaceOrder
 
 ```sh { name=place-order excludeFromRunAll=true promptEnv=true }
-export PIZZA="1"
-export NAME="John Doe"
+export PIZZA="5"
+export NAME="Peter"
 
 temporal workflow execute -t pizza --name PlaceOrder \
     -i "$(jq -c -n '{name:env.NAME,pizza:env.PIZZA|tonumber}')"
