@@ -1,5 +1,7 @@
 # Pizza Delivery Simulator 🍕
 
+## Plan _(not all implemented yet)_
+
 - Workflow: Customer places an order.
 - Activities:
     - Bake pizza _(takes time, might fail/retry if the "oven breaks")_.
