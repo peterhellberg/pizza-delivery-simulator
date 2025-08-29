@@ -1,5 +1,13 @@
 # Pizza Delivery Simulator 🍕
 
+> [!Tip]
+> This is a notebook that can be used with the [Runme CLI](https://docs.runme.dev/installation/cli) 📚
+>
+> _Installation of the Runme CLI:_
+>   - **On macOS:** `brew install runme`
+>   - **Using Go:** `go install github.com/stateful/runme@latest`
+>   - **Binaries:** <https://github.com/stateful/runme/releases>
+
 ## Plan _(not all implemented yet)_
 
 - Workflow: Customer places an order.
@@ -8,14 +16,6 @@
     - Dispatch delivery driver.
     - Driver reports progress via Temporal signals _(e.g., “Stuck in traffic”, “Almost there”)_.
 - Features shown: Long-running workflow, async signals, retries, timers (simulate delays).
-
-> [!Tip]
-> This is a notebook that can be used with the [Runme CLI](https://docs.runme.dev/installation/cli) 📚
->
-> _Installation of the Runme CLI:_
->   - **On macOS:** `brew install runme`
->   - **Using Go:** `go install github.com/stateful/runme@latest`
->   - **Binaries:** <https://github.com/stateful/runme/releases>
 
 ## Dependencies
 
