@@ -53,6 +53,13 @@ temporal workflow execute -t pizza --name PlaceOrder \
 temporal server start-dev -f=pds.db
 ```
 
+### Search attributes
+
+```sh { name=temporal-create-search-attributes }
+temporal operator search-attribute create --name DriverAssigned --type Bool
+temporal operator search-attribute create --name OrderID --type Text
+```
+
 ### Worker
 
 ```sh { name=worker }
