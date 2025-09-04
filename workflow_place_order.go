@@ -18,6 +18,13 @@ type PlaceOrderResult struct {
 	Message string
 }
 
+type Map map[string]any
+
+type PizzaSearchAttributes struct {
+	DriverAssigned bool   `json:"DriverAssigned"`
+	OrderID        string `json:"OrderID"`
+}
+
 func PlaceOrder(ctx workflow.Context, in PlaceOrderInput) (PlaceOrderResult, error) {
 	logger := workflow.GetLogger(ctx)
 
@@ -97,7 +104,16 @@ func PlaceOrder(ctx workflow.Context, in PlaceOrderInput) (PlaceOrderResult, err
 		"Customer", customer,
 	)
 
+	driverAssigned := temporal.NewSearchAttributeKeyBool("DriverAssigned")
+	orderID := temporal.NewSearchAttributeKeyString("OrderID")
+
+	workflow.UpsertMemo(ctx, Map{
+		"Customer": customer,
+		"Pizza":    pizza,
+	})
+
 	order := Order{
+		ID:       workflow.GetInfo(ctx).WorkflowExecution.ID,
 		Customer: customer,
 		Pizza:    pizza,
 	}
@@ -106,13 +122,30 @@ func PlaceOrder(ctx workflow.Context, in PlaceOrderInput) (PlaceOrderResult, err
 		"Order", order,
 	)
 
+	workflow.UpsertTypedSearchAttributes(ctx,
+		driverAssigned.ValueSet(false),
+		orderID.ValueSet(order.ID),
+	)
+
+	driverCh := workflow.GetSignalChannel(ctx, "DriverAccepted")
+	var driverID string
+
+	logger.Info("Waiting for driver to accept assignment...")
+	driverCh.Receive(ctx, &driverID)
+	logger.Info("Driver accepted", "driverID", driverID)
+
+	workflow.UpsertTypedSearchAttributes(ctx,
+		driverAssigned.ValueSet(true),
+	)
+
 	return PlaceOrderResult{
 		Success: true,
 		Message: fmt.Sprintf(
-			"OK, expected delivery of a %s to %s in %s",
+			"OK, expected delivery of a %s to %s in %s by driver %s",
 			order.Pizza.Name,
 			order.Address,
 			order.Delivery,
+			driverID,
 		),
 	}, nil
 }
