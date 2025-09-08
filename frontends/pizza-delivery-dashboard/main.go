@@ -96,7 +96,6 @@ func main() {
 	http.HandleFunc("POST /assign", d.assign)
 	http.HandleFunc("GET /style.css", d.styleCSS)
 	http.HandleFunc("GET /orders", d.orders)
-	http.HandleFunc("GET /orders/count", d.ordersCount)
 	http.HandleFunc("GET /orders/count.stream", d.ordersCountStream)
 
 	logger.Info("Pizza dashboard started at http://localhost:" + port)
@@ -225,17 +224,6 @@ func (d *Dashboard) countUnassignedOrders(ctx context.Context) (int64, error) {
 	}
 
 	return resp.Count, nil
-}
-
-// Endpoint method for /orders/count.json
-func (d *Dashboard) ordersCount(w http.ResponseWriter, r *http.Request) {
-	count, err := d.countUnassignedOrders(r.Context())
-	if err != nil {
-		http.Error(w, "Failed to count unassigned orders: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Fprintf(w, "%d", count)
 }
 
 // Endpoint method for /orders/count.stream
