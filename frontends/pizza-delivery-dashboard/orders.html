@@ -1,0 +1,60 @@
+{{range .Orders -}}
+<article class="order-card">
+  <div class="order-header">
+    <nav>
+      <ul>
+        <li>
+          <h2>
+            <kbd>{{.Info.Pizza.Name}}</kbd> 
+            for 
+            <mark>{{.Info.Customer.Name}}</mark>
+          </h2>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <details class="dropdown">
+            <summary>
+              ⏱️ Temporal
+            </summary>
+            <ul dir="rtl">
+              <li>
+                <a href="http://localhost:8233/namespaces/default/workflows/{{.WorkflowID}}">
+                  Workflow
+                </a>
+              </li>
+              <li>
+                <a href="http://localhost:8233/namespaces/default/workflows/{{.WorkflowID}}/{{.RunID}}/history">
+                  Run
+                </a>
+              </li>
+            </ul>
+          </details>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  <div class="order-meta">
+    <address>🏠 {{.Info.Customer.Addr}}</address>
+  </div>
+  <form method="POST" action="/assign">
+    <input type="hidden" name="workflowID" value="{{.WorkflowID}}">
+    <input type="hidden" name="runID" value="{{.RunID}}">
+    <input name="note" placeholder="Note for the driver">
+    <fieldset role="group" data-tooltip="Deliver a {{.Info.Pizza.Name}} for {{.Info.Customer.Name}}">
+      <select name="driver">
+        {{range $.Drivers -}}
+        <option value="{{.Name}}">{{.Emoji}} {{.Name}}</option>
+        {{end -}}
+      </select>
+      <input type="submit" value="Assign">
+    </fieldset>
+  </form>
+</article>
+{{else}}
+<p>
+  <em hx-trigger="sse:count-changed" hx-get="/orders" hx-target="#orders">
+    No orders waiting for a driver ✨
+  </em>
+</p>
+{{end -}}

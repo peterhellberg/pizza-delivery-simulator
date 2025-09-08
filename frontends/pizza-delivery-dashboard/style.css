@@ -1,0 +1,57 @@
+header {
+  position: sticky;
+  top: 0;
+  background: var(--pico-background-color);
+  padding: 0.5rem 0;
+	z-index: 10;
+}
+
+header h1 {
+  padding: 2rem 0 1rem 0;
+}
+
+td, th {
+  border-bottom: 0;
+  padding: 0;
+}
+
+nav li {
+  padding: 0;
+}
+
+.container {
+	max-width: 950px;
+	margin: 0 auto;
+	padding: 0 0.5rem;
+}
+
+.order-card {
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.order-card table {
+  margin-bottom: 0;
+}
+
+.order-card table [role="group"] {
+  margin-bottom: 0;
+}
+
+.order-card:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+table.debug input {
+  font-size: 0.6rem;
+  padding: 0.2rem 0.3rem;
+  height: auto;
+}
+
+table.debug [role="button"] {
+  font-size: 0.5rem;
+  font-weight: 600;
+  padding: 0.2rem 0.3rem;
+  height: auto;
+}

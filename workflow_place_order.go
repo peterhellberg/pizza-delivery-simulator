@@ -127,12 +127,13 @@ func PlaceOrder(ctx workflow.Context, in PlaceOrderInput) (PlaceOrderResult, err
 		orderID.ValueSet(order.ID),
 	)
 
-	driverCh := workflow.GetSignalChannel(ctx, "DriverAccepted")
-	var driverID string
-
-	logger.Info("Waiting for driver to accept assignment...")
-	driverCh.Receive(ctx, &driverID)
-	logger.Info("Driver accepted", "driverID", driverID)
+	var driver Driver
+	{
+		driverCh := workflow.GetSignalChannel(ctx, "DriverAccepted")
+		logger.Info("Waiting for driver to accept assignment...")
+		driverCh.Receive(ctx, &driver)
+		logger.Info("Driver accepted", "driver", driver)
+	}
 
 	workflow.UpsertTypedSearchAttributes(ctx,
 		driverAssigned.ValueSet(true),
@@ -141,11 +142,19 @@ func PlaceOrder(ctx workflow.Context, in PlaceOrderInput) (PlaceOrderResult, err
 	return PlaceOrderResult{
 		Success: true,
 		Message: fmt.Sprintf(
-			"OK, expected delivery of a %s to %s in %s by driver %s",
+			"OK, expected delivery of a %s to %s in %s by driver %s %s %q",
 			order.Pizza.Name,
 			order.Address,
 			order.Delivery,
-			driverID,
+			driver.Emoji,
+			driver.Name,
+			driver.Note,
 		),
 	}, nil
+}
+
+type Driver struct {
+	Emoji string
+	Name  string
+	Note  string
 }

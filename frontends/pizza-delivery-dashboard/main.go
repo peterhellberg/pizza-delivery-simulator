@@ -8,7 +8,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"slices"
 	"time"
+
+	_ "embed"
 
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/workflowservice/v1"
@@ -16,22 +19,37 @@ import (
 	"go.temporal.io/sdk/log"
 )
 
-const port = "8234"
+const (
+	port                  = "8234"
+	namespace             = "default"
+	queryUnassignedOrders = `WorkflowType="PlaceOrder" AND ExecutionStatus="Running" AND DriverAssigned=false`
+)
 
-// Configurable drivers
-var drivers = []string{
-	"🧒",
-	"👴",
-	"👲",
+// Available drivers
+var drivers = []Driver{
+	{Emoji: "🧒", Name: "Tommy Brown"},
+	{Emoji: "👴", Name: "Walter Smith"},
+	{Emoji: "🧔", Name: "James O'Connor"},
 }
 
-// Order represents a workflow execution
+type Driver struct {
+	Emoji string
+	Name  string
+}
+
+type DriverNote struct {
+	Driver
+	Note string
+}
+
+// Order represents a workflow execution of type PlaceOrder without an assigned driver
 type Order struct {
 	WorkflowID string
 	RunID      string
 	Info       OrderInfo
 }
 
+// OrderInfo is the information about an order
 type OrderInfo struct {
 	Customer struct {
 		Name  string
@@ -45,18 +63,22 @@ type OrderInfo struct {
 	}
 }
 
-// DashboardData contains workflows and drivers for template
-type DashboardData struct {
+// IndexData contains the data used for the index template
+type IndexData struct {
+	OrdersCount int64
+}
+
+// OrdersData contains the data used for the orders template
+type OrdersData struct {
 	Orders  []Order
-	Drivers []string
+	Drivers []Driver
 }
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	temporal, err := client.NewLazyClient(client.Options{
-		Namespace: "default",
-		Logger:    log.NewStructuredLogger(logger),
+		Logger: log.NewStructuredLogger(logger),
 	})
 
 	if err != nil {
@@ -70,8 +92,12 @@ func main() {
 		Logger: logger,
 	}
 
-	http.HandleFunc("/", d.listWorkflows)
-	http.HandleFunc("/assign", d.assignDriver)
+	http.HandleFunc("/{$}", d.index)
+	http.HandleFunc("POST /assign", d.assign)
+	http.HandleFunc("GET /style.css", d.styleCSS)
+	http.HandleFunc("GET /orders", d.orders)
+	http.HandleFunc("GET /orders/count", d.ordersCount)
+	http.HandleFunc("GET /orders/count.stream", d.ordersCountStream)
 
 	logger.Info("Pizza dashboard started at http://localhost:" + port)
 	http.ListenAndServe(":"+port, nil)
@@ -83,18 +109,16 @@ type Dashboard struct {
 	log.Logger
 }
 
-// listWorkflows handler queries workflows and renders the template
-func (d *Dashboard) listWorkflows(w http.ResponseWriter, r *http.Request) {
-	resp, err := d.WorkflowService().ListWorkflowExecutions(r.Context(),
+func (d *Dashboard) listUnassignedOrders(ctx context.Context, pageSize int32) ([]Order, error) {
+	resp, err := d.WorkflowService().ListWorkflowExecutions(ctx,
 		&workflowservice.ListWorkflowExecutionsRequest{
-			Namespace: "default",
-			PageSize:  100,
-			Query:     `DriverAssigned = false`,
+			Namespace: namespace,
+			PageSize:  pageSize,
+			Query:     queryUnassignedOrders,
 		},
 	)
 	if err != nil {
-		http.Error(w, "Failed to query workflows: "+err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	var orders []Order
@@ -121,29 +145,42 @@ func (d *Dashboard) listWorkflows(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	if err := page.Execute(w, DashboardData{
-		Orders:  orders,
-		Drivers: drivers,
+	return orders, nil
+}
+
+// index handler queries workflows and renders the template
+func (d *Dashboard) index(w http.ResponseWriter, r *http.Request) {
+	count, err := d.countUnassignedOrders(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to count unassigned orders: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := indexTemplate.Execute(w, IndexData{
+		OrdersCount: count,
 	}); err != nil {
 		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
-// assignDriver signals a workflow that a driver has been assigned and reloads dashboard
-func (d *Dashboard) assignDriver(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-
+// assign signals a workflow that a driver has been assigned and reloads dashboard
+func (d *Dashboard) assign(w http.ResponseWriter, r *http.Request) {
 	var (
 		workflowID = r.FormValue("workflowID")
 		runID      = r.FormValue("runID")
 		driver     = r.FormValue("driver")
+		note       = r.FormValue("note")
 		ctx        = context.Background()
 	)
 
-	if err := d.SignalWorkflow(ctx, workflowID, runID, "DriverAccepted", driver); err != nil {
+	idx := slices.IndexFunc(drivers, func(d Driver) bool {
+		return d.Name == driver
+	})
+
+	if err := d.SignalWorkflow(ctx, workflowID, runID, "DriverAccepted", DriverNote{
+		Driver: drivers[idx],
+		Note:   note,
+	}); err != nil {
 		http.Error(w,
 			fmt.Sprintf("Failed to signal workflow: %v", err),
 			http.StatusInternalServerError,
@@ -152,9 +189,105 @@ func (d *Dashboard) assignDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	time.Sleep(500 * time.Millisecond)
-
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (d *Dashboard) styleCSS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/css")
+	w.Write(styleCSS)
+}
+
+func (d *Dashboard) orders(w http.ResponseWriter, r *http.Request) {
+	orders, err := d.listUnassignedOrders(r.Context(), 25)
+	if err != nil {
+		http.Error(w, "Failed to query workflows: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := ordersTemplate.Execute(w, OrdersData{
+		Orders:  orders,
+		Drivers: drivers,
+	}); err != nil {
+		http.Error(w, "Template error: "+err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (d *Dashboard) countUnassignedOrders(ctx context.Context) (int64, error) {
+	resp, err := d.WorkflowService().CountWorkflowExecutions(ctx,
+		&workflowservice.CountWorkflowExecutionsRequest{
+			Namespace: namespace,
+			Query:     queryUnassignedOrders,
+		},
+	)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return resp.Count, nil
+}
+
+// Endpoint method for /orders/count.json
+func (d *Dashboard) ordersCount(w http.ResponseWriter, r *http.Request) {
+	count, err := d.countUnassignedOrders(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to count unassigned orders: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, "%d", count)
+}
+
+// Endpoint method for /orders/count.stream
+func (d *Dashboard) ordersCountStream(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	// Check if w is a HTTP flusher
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	// Send a first "keepalive" comment so Firefox commits the stream
+	fmt.Fprint(w, ": connected\n\n")
+	flusher.Flush()
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	var lastCount int64 = -1
+
+	count, err := d.countUnassignedOrders(ctx)
+	if err != nil {
+		return
+	}
+
+	fmt.Fprintf(w, "event: count-changed\ndata: %d\n\n", count)
+	flusher.Flush()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			count, err := d.countUnassignedOrders(ctx)
+			if err != nil {
+				continue
+			}
+
+			if count != lastCount {
+				fmt.Fprintf(w, "event: count-changed\ndata: %d\n\n", count)
+				flusher.Flush()
+				lastCount = count
+			}
+		}
+	}
 }
 
 func getMemoField[T any](fields map[string]*common.Payload, key string, out *T) error {
@@ -166,91 +299,17 @@ func getMemoField[T any](fields map[string]*common.Payload, key string, out *T) 
 	return nil
 }
 
-// Template for dashboard
-var page = template.Must(template.New("index").Parse(`
-<!DOCTYPE html>
-<html data-theme="dark">
-  <head>
-    <title>🍕 Pizza Delivery Dashboard 🍕</title>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.orange.min.css"
-    >
-    <style>
-      :root { --pico-font-size: 1.8rem; }
-			header {
-			  position: sticky;
-			  top: 0;
-			  background: var(--pico-background-color);
-			  padding: 0.5rem 0;
-				z-index: 10;
-			}
-			header h4 { padding: 0.5rem 0; }
-			.container {
-  			max-width: 950px;
-  			margin: 0 auto;
-  			padding: 0 0.5rem;
-			}
-			.order-card {
-			  padding: 1rem;
-			  border: 1px solid var(--pico-muted-border-color);
-			  border-radius: 0.75rem;
-			  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-			  margin-bottom: 1rem;
-			}
-			.order-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-			.order-meta {
-			}
-			.order-meta ul { padding: 0; }
-			.order-meta li { list-style: none; }
-			.order-meta .debug {
-				font-size: 0.5rem; 
-				float: right; 
-				color: var(--pico-muted-color); 
-			}
-    </style>
-  </head>
-  <body>
-    <header class="container">
-      <h4>🚚 Orders waiting for driver ({{len .Orders}})</h4>
-    </header>
-    <main class="container">
-      {{range .Orders}}
-        <article class="order-card">
-          <div class="order-header">
-            <h2>
-							<u>{{.Info.Pizza.Name}}</u> to <em>{{.Info.Customer.Name}}</em>
-						</h2>
-          </div>
-					<div class="order-meta">
-					  <ul>
-					    <li>🍕 {{.Info.Pizza.Name}}</li>
-					    <li>🏠 <strong>{{.Info.Customer.Name}}</strong>
-					      <ul>
-					        <li>
-										<address>{{.Info.Customer.Addr}}</address>
-									</li>
-					      </ul>
-					    </li>
-					  </ul>
-					</div>
-          <form method="POST" action="/assign">
-            <input type="hidden" name="workflowID" value="{{.WorkflowID}}">
-            <input type="hidden" name="runID" value="{{.RunID}}">
-            <fieldset role="group">
-              <select name="driver">
-                {{range $.Drivers}}
-                  <option value="{{.}}">{{.}}</option>
-                {{end}}
-              </select>
-              <input type="submit" value="Assign 🚗">
-            </fieldset>
-          </form>
-        </article>
-      {{else}}
-        <p><em>No orders waiting for a driver ✨</em></p>
-      {{end}}
-    </main>
-  </body>
-</html>
-`))
+var (
+	//go:embed style.css
+	styleCSS []byte
+
+	//go:embed index.html
+	indexHTML string
+
+	//go:embed orders.html
+	ordersHTML string
+
+	// Parsed templates
+	indexTemplate  = template.Must(template.New("index").Parse(indexHTML))
+	ordersTemplate = template.Must(template.New("orders").Parse(ordersHTML))
+)
