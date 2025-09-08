@@ -27,12 +27,13 @@ const (
 
 // Available drivers
 var drivers = []Driver{
-	{Emoji: "🧒", Name: "Tommy Brown"},
-	{Emoji: "👴", Name: "Walter Smith"},
-	{Emoji: "🧔", Name: "James O'Connor"},
+	{ID: "tommy", Emoji: "🧒", Name: "Tommy Brown"},
+	{ID: "walter", Emoji: "👴", Name: "Walter Smith"},
+	{ID: "james", Emoji: "🧔", Name: "James O'Connor"},
 }
 
 type Driver struct {
+	ID    string
 	Emoji string
 	Name  string
 }
@@ -96,6 +97,7 @@ func main() {
 	http.HandleFunc("POST /assign", d.assign)
 	http.HandleFunc("GET /style.css", d.styleCSS)
 	http.HandleFunc("GET /orders", d.orders)
+	http.HandleFunc("GET /orders/count", d.ordersCount)
 	http.HandleFunc("GET /orders/count.stream", d.ordersCountStream)
 
 	logger.Info("Pizza dashboard started at http://localhost:" + port)
@@ -176,7 +178,7 @@ func (d *Dashboard) assign(w http.ResponseWriter, r *http.Request) {
 		return d.Name == driver
 	})
 
-	if err := d.SignalWorkflow(ctx, workflowID, runID, "DriverAccepted", DriverNote{
+	if err := d.SignalWorkflow(ctx, workflowID, runID, "DriverAssigned", DriverNote{
 		Driver: drivers[idx],
 		Note:   note,
 	}); err != nil {
@@ -224,6 +226,17 @@ func (d *Dashboard) countUnassignedOrders(ctx context.Context) (int64, error) {
 	}
 
 	return resp.Count, nil
+}
+
+// Endpoint method for /orders/count
+func (d *Dashboard) ordersCount(w http.ResponseWriter, r *http.Request) {
+	count, err := d.countUnassignedOrders(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to count unassigned orders: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, "%d", count)
 }
 
 // Endpoint method for /orders/count.stream

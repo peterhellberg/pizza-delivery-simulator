@@ -40,8 +40,8 @@
   <form method="POST" action="/assign">
     <input type="hidden" name="workflowID" value="{{.WorkflowID}}">
     <input type="hidden" name="runID" value="{{.RunID}}">
-    <input name="note" placeholder="Note for the driver">
-    <fieldset role="group" data-tooltip="Deliver a {{.Info.Pizza.Name}} for {{.Info.Customer.Name}}">
+    <input name="note" placeholder="Note about the order">
+    <fieldset role="group" data-tooltip="Driver that should deliver the {{.Info.Pizza.Name}} to {{.Info.Customer.Name }}">
       <select name="driver">
         {{range $.Drivers -}}
         <option value="{{.Name}}">{{.Emoji}} {{.Name}}</option>
@@ -54,7 +54,7 @@
 {{else}}
 <p>
   <em hx-trigger="sse:count-changed" hx-get="/orders" hx-target="#orders">
-    No orders waiting for a driver ✨
+    No orders waiting for a driver assignment ✨
   </em>
 </p>
 {{end -}}

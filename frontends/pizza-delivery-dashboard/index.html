@@ -13,7 +13,7 @@
       <h1>🚚
         <mark 
           sse-swap="message" hx-get="/orders/count" hx-trigger="load,sse:count-changed"
-        >{{.OrdersCount}}</mark> orders waiting to be assigned
+        >{{.OrdersCount}}</mark> orders waiting to be assigned.
       </h1>
     </header>
     <main class="container" id="orders" hx-get="/orders" hx-trigger="load" hx-swap="innerHTML">
