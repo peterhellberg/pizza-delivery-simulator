@@ -33,10 +33,10 @@ After assignment, the workflow is signaled, and the dashboard reloads.
 The server comes with a default set of drivers:
 
 ```go
-var drivers = []string{
-    "🧒",
-    "👴",
-    "👲",
+var drivers = []Driver{
+	{Emoji: "🧒", Name: "Tommy Brown"},
+	{Emoji: "👴", Name: "Walter Smith"},
+	{Emoji: "🧔", Name: "James O'Connor"},
 }
 ```
 
@@ -44,14 +44,17 @@ You can modify this list in `main.go` to match your drivers.
 
 ### Endpoints
 
-| Endpoint       | Method | Description |
-|----------------|--------|-------------|
-| `/`            | GET    | Lists workflows waiting for driver assignment. |
-| `/assign`      | POST   | Assigns a driver to a workflow and signals Temporal. |
+| Endpoint                  | Method | Description |
+|---------------------------|--------|-------------|
+| `/`                       | GET    | Renders the dashboard, showing the number of unassigned orders. |
+| `/assign`                 | POST   | Assigns a driver to a workflow and signals the workflow in Temporal. Accepts `workflowID`, `runID`, `driver`, and optional `note` form values. |
+| `/style.css`              | GET    | Serves the CSS for the dashboard. |
+| `/orders`                 | GET    | Returns the HTML fragment containing the list of unassigned orders and driver assignment forms. |
+| `/orders/count.stream`    | GET    | Server-Sent Events (SSE) stream emitting the current count of unassigned orders whenever it changes. |
 
 ## How It Works
 
-1. The server queries Temporal for workflows where `DriverAssigned = false`.
+1. The server queries Temporal for workflows where `WorkflowType="PlaceOrder" AND ExecutionStatus="Running" AND DriverAssigned=false`
 2. The dashboard displays the list of workflows and available drivers.
 3. When a driver is assigned, the server signals the workflow using Temporal's `SignalWorkflow` API.
 4. The dashboard reloads to reflect updated workflow statuses.
@@ -60,4 +63,5 @@ You can modify this list in `main.go` to match your drivers.
 
 - [Go Temporal SDK](https://pkg.go.dev/go.temporal.io/sdk)
 - [PicoCSS](https://picocss.com/) for styling
+- [HTMX](https://htmx.org/) for reactivity
 - Go standard libraries: `net/http`, `html/template`, `context`, `log/slog`, `os`, `time`
