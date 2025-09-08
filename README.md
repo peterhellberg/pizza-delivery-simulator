@@ -57,7 +57,8 @@ temporal server start-dev -f=pds.db
 
 ```sh { name=temporal-create-search-attributes }
 temporal operator search-attribute create --name DriverAssigned --type Bool
-temporal operator search-attribute create --name OrderID --type Text
+temporal operator search-attribute create --name DriverID --type Keyword
+temporal operator search-attribute create --name OrderID --type Keyword
 ```
 
 ### Worker
