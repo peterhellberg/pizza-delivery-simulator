@@ -31,7 +31,7 @@
 
 ### [pizza-delivery-dashboard](/frontends/pizza-delivery-dashboard)
 
-![2 orders waiting to be assigned. ](https://assets.c7.se/imgur/pAU36FB.png)
+<img src="https://assets.c7.se/imgur/pAU36FB.png" width="60%" alt="2 orders waiting to be assigned." />
 
 ## Commands
 
