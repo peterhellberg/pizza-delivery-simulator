@@ -106,11 +106,11 @@ func main() {
 	}
 
 	http.HandleFunc("GET /{$}", d.index)
-	http.HandleFunc("POST /assign", d.assign)
-	http.HandleFunc("GET /style.css", d.styleCSS)
 	http.HandleFunc("GET /orders", d.orders)
 	http.HandleFunc("GET /orders/count", d.ordersCount)
 	http.HandleFunc("GET /orders/count.stream", d.ordersCountStream)
+	http.HandleFunc("POST /assign", d.assign)
+
 	http.Handle("GET /js/", http.StripPrefix("/js/", http.FileServer(http.FS(jsFS))))
 	http.Handle("GET /css/", http.StripPrefix("/css/", http.FileServer(http.FS(cssFS))))
 
@@ -205,11 +205,6 @@ func (d *Dashboard) assign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func (d *Dashboard) styleCSS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/css")
-	w.Write(styleCSS)
 }
 
 func (d *Dashboard) orders(w http.ResponseWriter, r *http.Request) {
@@ -313,9 +308,6 @@ func getMemoField[T any](fields map[string]*common.Payload, key string, out *T) 
 }
 
 var (
-	//go:embed style.css
-	styleCSS []byte
-
 	//go:embed static/*
 	staticFS embed.FS
 
