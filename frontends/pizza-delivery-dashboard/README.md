@@ -6,6 +6,8 @@ a simple dashboard for managing pizza delivery workflows using [Temporal](https:
 It allows you to view workflows waiting for a driver and assign 
 available drivers directly from the web interface.
 
+![2 orders waiting to be assigned. ](https://assets.c7.se/imgur/pAU36FB.png)
+
 ## Features
 
 - Displays a list of workflows where a driver has not yet been assigned.
