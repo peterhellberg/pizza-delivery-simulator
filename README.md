@@ -39,7 +39,7 @@ temporal workflow execute -t pizza --name GetMenu
 
 #### PlaceOrder
 
-```sh { name=place-order excludeFromRunAll=true promptEnv=true }
+```sh { name=place-order }
 export PIZZA="5"
 export NAME="Peter"
 
