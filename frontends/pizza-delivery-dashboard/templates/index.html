@@ -2,11 +2,11 @@
 <html data-theme="light">
   <head>
     <title>Pizza Delivery Dashboard</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.orange.min.css">
-    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/css/picocss/v2.1.1/pico.orange.min.css">
+    <link rel="stylesheet" href="/css/style.css" />
     <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 99 99"><text y=".9em" font-size="99">🍕</text></svg>'>
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/htmx-ext-sse@2.2.2"></script>
+    <script src="/js/htmx/v2.0.6/htmx.min.js"></script>
+    <script src="/js/htmx-ext-sse/v2.2.2/sse.min.js"></script>
   </head>
   <body hx-ext="sse" sse-connect="/orders/count.stream">
     <header class="container">

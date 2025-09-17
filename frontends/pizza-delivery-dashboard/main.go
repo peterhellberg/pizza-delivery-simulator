@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"slices"
 	"time"
-
-	_ "embed"
 
 	"go.temporal.io/api/common/v1"
 	"go.temporal.io/api/workflowservice/v1"
@@ -78,6 +78,18 @@ type OrdersData struct {
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
+	jsFS, err := fs.Sub(staticFS, "static/js")
+	if err != nil {
+		logger.Info("Unable construct js filesystem", "Error", err)
+		os.Exit(1)
+	}
+
+	cssFS, err := fs.Sub(staticFS, "static/css")
+	if err != nil {
+		logger.Info("Unable construct css filesystem", "Error", err)
+		os.Exit(1)
+	}
+
 	temporal, err := client.NewLazyClient(client.Options{
 		Logger: log.NewStructuredLogger(logger),
 	})
@@ -93,12 +105,14 @@ func main() {
 		Logger: logger,
 	}
 
-	http.HandleFunc("/{$}", d.index)
+	http.HandleFunc("GET /{$}", d.index)
 	http.HandleFunc("POST /assign", d.assign)
 	http.HandleFunc("GET /style.css", d.styleCSS)
 	http.HandleFunc("GET /orders", d.orders)
 	http.HandleFunc("GET /orders/count", d.ordersCount)
 	http.HandleFunc("GET /orders/count.stream", d.ordersCountStream)
+	http.Handle("GET /js/", http.StripPrefix("/js/", http.FileServer(http.FS(jsFS))))
+	http.Handle("GET /css/", http.StripPrefix("/css/", http.FileServer(http.FS(cssFS))))
 
 	logger.Info("Pizza dashboard started at http://localhost:" + port)
 	http.ListenAndServe(":"+port, nil)
@@ -264,29 +278,27 @@ func (d *Dashboard) ordersCountStream(w http.ResponseWriter, r *http.Request) {
 
 	var lastCount int64 = -1
 
-	count, err := d.countUnassignedOrders(ctx)
-	if err != nil {
-		return
+	checkCount := func(ctx context.Context) {
+		count, err := d.countUnassignedOrders(ctx)
+		if err != nil {
+			return
+		}
+
+		if count != lastCount {
+			fmt.Fprintf(w, "event: count-changed\ndata: %d\n\n", count)
+			flusher.Flush()
+			lastCount = count
+		}
 	}
 
-	fmt.Fprintf(w, "event: count-changed\ndata: %d\n\n", count)
-	flusher.Flush()
+	checkCount(ctx)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			count, err := d.countUnassignedOrders(ctx)
-			if err != nil {
-				continue
-			}
-
-			if count != lastCount {
-				fmt.Fprintf(w, "event: count-changed\ndata: %d\n\n", count)
-				flusher.Flush()
-				lastCount = count
-			}
+			checkCount(ctx)
 		}
 	}
 }
@@ -304,10 +316,13 @@ var (
 	//go:embed style.css
 	styleCSS []byte
 
-	//go:embed index.html
+	//go:embed static/*
+	staticFS embed.FS
+
+	//go:embed templates/index.html
 	indexHTML string
 
-	//go:embed orders.html
+	//go:embed templates/orders.html
 	ordersHTML string
 
 	// Parsed templates
