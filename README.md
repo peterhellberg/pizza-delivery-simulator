@@ -56,7 +56,7 @@ temporal workflow execute -t pizza --name PlaceOrder \
 ### Server
 
 ```sh { name=temporal-dev-server }
-temporal server start-dev -f=pds.db
+temporal server start-dev --ip=0.0.0.0 -f=pds.db
 ```
 
 #### Search attributes
