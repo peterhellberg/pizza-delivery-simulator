@@ -26,56 +26,6 @@ const (
 	queryUnassignedOrders = `WorkflowType="PlaceOrder" AND ExecutionStatus="Running" AND DriverAssigned=false`
 )
 
-// Available drivers
-var drivers = []Driver{
-	{ID: "tommy", Emoji: "🧒", Name: "Tommy Brown"},
-	{ID: "walter", Emoji: "👴", Name: "Walter Smith"},
-	{ID: "james", Emoji: "🧔", Name: "James O'Connor"},
-}
-
-type Driver struct {
-	ID    string
-	Emoji string
-	Name  string
-}
-
-type DriverNote struct {
-	Driver
-	Note string
-}
-
-// Order represents a workflow execution of type PlaceOrder without an assigned driver
-type Order struct {
-	WorkflowID string
-	RunID      string
-	Info       OrderInfo
-}
-
-// OrderInfo is the information about an order
-type OrderInfo struct {
-	Customer struct {
-		Name  string
-		Addr  string
-		Error error
-	}
-	Pizza struct {
-		Nr    int
-		Name  string
-		Error error
-	}
-}
-
-// IndexData contains the data used for the index template
-type IndexData struct {
-	OrdersCount int64
-}
-
-// OrdersData contains the data used for the orders template
-type OrdersData struct {
-	Orders  []Order
-	Drivers []Driver
-}
-
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
@@ -319,6 +269,56 @@ func getMemoField[T any](fields map[string]*common.Payload, key string, out *T) 
 		}
 	}
 	return nil
+}
+
+type Driver struct {
+	ID    string
+	Emoji string
+	Name  string
+}
+
+type DriverNote struct {
+	Driver
+	Note string
+}
+
+// Order represents a workflow execution of type PlaceOrder without an assigned driver
+type Order struct {
+	WorkflowID string
+	RunID      string
+	Info       OrderInfo
+}
+
+// OrderInfo is the information about an order
+type OrderInfo struct {
+	Customer struct {
+		Name  string
+		Addr  string
+		Error error
+	}
+	Pizza struct {
+		Nr    int
+		Name  string
+		Error error
+	}
+}
+
+// IndexData contains the data used for the index template
+type IndexData struct {
+	OrdersCount int64
+}
+
+// OrdersData contains the data used for the orders template
+type OrdersData struct {
+	Orders  []Order
+	Drivers []Driver
+}
+
+// Available drivers
+var drivers = []Driver{
+	{ID: "tommy", Emoji: "🧒", Name: "Tommy Brown"},
+	{ID: "walter", Emoji: "👴", Name: "Walter Smith"},
+	{ID: "james", Emoji: "🧔", Name: "James O'Connor"},
 }
 
 var (
