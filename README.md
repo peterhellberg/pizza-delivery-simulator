@@ -12,10 +12,9 @@
 
 - Workflow: Customer places an order.
 - Activities:
-    - Bake pizza _(takes time, might fail/retry if the "oven breaks")_.
-    - Dispatch delivery driver.
-    - Driver reports progress via Temporal signals _(e.g., “Stuck in traffic”, “Almost there”)_.
-- Features shown: Long-running workflow, async signals, retries, timers (simulate delays).
+    - [x] Place order (for a known customer)
+    - [x] Assign delivery driver (via frontend `pizza-delivery-dashboard`)
+    - [ ] Driver reports progress via Temporal signals _(e.g., “Stuck in traffic”, “Almost there”)_.
 
 ## Dependencies
 
