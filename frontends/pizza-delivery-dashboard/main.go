@@ -21,6 +21,7 @@ import (
 
 const (
 	port                  = "8234"
+	addr                  = "0.0.0.0:" + port
 	namespace             = "default"
 	queryUnassignedOrders = `WorkflowType="PlaceOrder" AND ExecutionStatus="Running" AND DriverAssigned=false`
 )
@@ -78,25 +79,23 @@ type OrdersData struct {
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	jsFS, err := fs.Sub(staticFS, "static/js")
-	if err != nil {
-		logger.Info("Unable construct js filesystem", "Error", err)
+	if err := run(addr, logger); err != nil {
+		logger.Error("run", "Error", err)
 		os.Exit(1)
 	}
+}
 
-	cssFS, err := fs.Sub(staticFS, "static/css")
+func run(addr string, logger *slog.Logger) error {
+	jsFS, cssFS, err := subFilesystems()
 	if err != nil {
-		logger.Info("Unable construct css filesystem", "Error", err)
-		os.Exit(1)
+		return fmt.Errorf("unable to construct sub filesystems: %w", err)
 	}
 
 	temporal, err := client.NewLazyClient(client.Options{
 		Logger: log.NewStructuredLogger(logger),
 	})
-
 	if err != nil {
-		logger.Info("Unable to connect to Temporal:", "Error", err)
-		os.Exit(1)
+		return fmt.Errorf("unable to connect to temporal: %w", err)
 	}
 	defer temporal.Close()
 
@@ -114,8 +113,23 @@ func main() {
 	http.Handle("GET /js/", http.StripPrefix("/js/", http.FileServer(http.FS(jsFS))))
 	http.Handle("GET /css/", http.StripPrefix("/css/", http.FileServer(http.FS(cssFS))))
 
-	logger.Info("Pizza dashboard started at http://localhost:" + port)
-	http.ListenAndServe(":"+port, nil)
+	logger.Info("Pizza dashboard started at http://" + addr)
+
+	return http.ListenAndServe(addr, nil)
+}
+
+func subFilesystems() (jsFS, cssFS fs.FS, err error) {
+	jsFS, err = fs.Sub(staticFS, "static/js")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cssFS, err = fs.Sub(staticFS, "static/css")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return jsFS, cssFS, nil
 }
 
 // The main type for the dashboard, such as the endpoints
