@@ -36,7 +36,7 @@
 
 ### Execute
 
-#### GetMenu 
+#### GetMenu
 
 ```sh { name=get-menu excludeFromRunAll=true }
 temporal workflow execute -t pizza --name GetMenu
@@ -70,6 +70,12 @@ temporal operator search-attribute create --name OrderID --type Keyword
 
 ```sh { name=worker }
 go run ./worker | jq
+```
+
+### Dashboard
+
+```sh { name=dashboard }
+go run ./frontends/pizza-delivery-dashboard
 ```
 
 ### Install `temporal` and `jq` using [Homebrew](https://brew.sh/) 🍏
